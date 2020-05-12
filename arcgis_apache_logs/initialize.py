@@ -62,12 +62,101 @@ class Initializer(CommonProcessor):
         self.logger.addHandler(ch)
 
     def run(self):
-        self.initialize_database()
+        self.initialize_service_tables()
+        self.initialize_referer_tables()
+        self.initialize_ip_address_tables()
+        self.populate_service_lut()
+
+    def initialize_referer_tables(self):
+        """
+        Verify that all the database tables are setup properly for managing
+        the referers.
+        """
+
+        cursor = self.conn.cursor()
+
+        sql = """
+              CREATE TABLE referer_lut (
+                  id integer PRIMARY KEY,
+                  name text
+              )
+              """
+        cursor.execute(sql)
+        sql = """
+              CREATE UNIQUE INDEX idx_referer
+              ON referer_lut(name)
+              """
+        cursor.execute(sql)
+
+    if 'referer_logs' not in df.name.values:
+
+        sql = """
+              CREATE TABLE referer_logs (
+                  date integer,
+                  id integer,
+                  hits integer,
+                  errors integer,
+                  nbytes integer,
+                  CONSTRAINT fk_referer_lut_id
+                      FOREIGN KEY (id)
+                      REFERENCES referer_lut(id)
+                      ON DELETE CASCADE
+              )
+              """
+        cursor.execute(sql)
+
+        # Unfortunately the index cannot be unique here.
+        sql = """
+              CREATE UNIQUE INDEX idx_referer_logs_date
+              ON referer_logs(date, id)
+              """
+        cursor.execute(sql)
 
     def initialize_database(self):
+
+        # Create the known services and logs tables.
+        sql = """
+              CREATE TABLE service_lut (
+                  id integer PRIMARY KEY,
+                  folder text,
+                  service text,
+                  service_type text
+              )
+              """
+        cursor.execute(sql)
+
+        sql = """
+              CREATE UNIQUE INDEX idx_services
+              ON service_lut(folder, service, service_type)
+              """
+        cursor.execute(sql)
+
+        sql = """
+              CREATE TABLE service_logs (
+                  date integer,
+                  id integer,
+                  hits integer,
+                  errors integer,
+                  nbytes integer,
+                  export_mapdraws integer,
+                  wms_mapdraws integer,
+                  CONSTRAINT fk_service_lut_id
+                      FOREIGN KEY (id)
+                      REFERENCES service_lut(id)
+                      ON DELETE CASCADE
+              )
+              """
+        cursor.execute(sql)
+
+        sql = """
+              CREATE UNIQUE INDEX idx_services_logs_date
+              ON service_logs(date, id)
+              """
+        cursor.execute(sql)
+
+    def populate_service_lut(self):
         """
-        Examine the project web site and populate the services database with
-        existing services.
+        Populate the services database with existing services.
         """
         if self.database.exists():
             self.logger.warning(f"Deleting {self.database}")
@@ -76,7 +165,7 @@ class Initializer(CommonProcessor):
         self.conn = sqlite3.connect(self.database)
         df = self.retrieve_services()
 
-        df.to_sql('service_lut', self.conn, index=False)
+        df.to_sql('service_lut', self.conn, index=False, if_exist='append')
         self.conn.commit()
 
     def retrieve_services(self):

@@ -73,65 +73,6 @@ class ServicesProcessor(CommonProcessor):
 
         self.data_retention_days = 30
 
-    def verify_database_setup(self):
-        """
-        Verify that all the database tables are setup properly for managing
-        the services.
-        """
-        sql = """
-              SELECT name
-              FROM sqlite_master
-              WHERE
-                  type='table'
-                  AND name NOT LIKE 'sqlite_%'
-                  AND name LIKE '%service%'
-              """
-        df = pd.read_sql(sql, self.conn)
-        if len(df) == 2:
-            # We're good.
-            return
-
-        cursor = self.conn.cursor()
-
-        # Create the known services and logs tables.
-        sql = """
-              CREATE TABLE service_lut (
-                  id integer PRIMARY KEY,
-                  folder text,
-                  service text,
-                  service_type text
-              )
-              """
-        cursor.execute(sql)
-        sql = """
-              CREATE UNIQUE INDEX idx_services
-              ON service_lut(folder, service, service_type)
-              """
-        cursor.execute(sql)
-
-        sql = """
-              CREATE TABLE service_logs (
-                  date integer,
-                  id integer,
-                  hits integer,
-                  errors integer,
-                  nbytes integer,
-                  export_mapdraws integer,
-                  wms_mapdraws integer,
-                  CONSTRAINT fk_service_lut_id
-                      FOREIGN KEY (id)
-                      REFERENCES service_lut(id)
-                      ON DELETE CASCADE
-              )
-              """
-        cursor.execute(sql)
-
-        sql = """
-              CREATE UNIQUE INDEX idx_services_logs_date
-              ON service_logs(date, id)
-              """
-        cursor.execute(sql)
-
     def process_raw_records(self, df):
         """
         We have reached a limit on how many records we accumulate before

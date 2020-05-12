@@ -9,7 +9,7 @@ console_scripts = [
     f'agg-parse-logs={cmdline}:parse_arcgis_apache_logs',
     f'agp-prune-database={cmdline}:prune_arcgis_apache_database',
     f'agp-produce-graphics={cmdline}:produce_arcgis_apache_graphics',
-    f'get-akamai-logs=akamai.commandline:get_akamai_logs',
+    f'agp-get-akamai-logs=akamai.commandline:get_akamai_logs',
 ],
 
 kwargs = {

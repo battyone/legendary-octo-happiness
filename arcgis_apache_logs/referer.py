@@ -60,63 +60,6 @@ class RefererProcessor(CommonProcessor):
 
         self.data_retention_days = 7
 
-    def verify_database_setup(self):
-        """
-        Verify that all the database tables are setup properly for managing
-        the referers.
-        """
-
-        cursor = self.conn.cursor()
-
-        # Do the referer tables exist?
-        sql = """
-              SELECT name
-              FROM sqlite_master
-              WHERE
-                  type='table'
-                  AND name NOT LIKE 'sqlite_%'
-              """
-        df = pd.read_sql(sql, self.conn)
-
-        if 'known_referers' not in df.name.values:
-
-            sql = """
-                  CREATE TABLE known_referers (
-                      id integer PRIMARY KEY,
-                      name text
-                  )
-                  """
-            cursor.execute(sql)
-            sql = """
-                  CREATE UNIQUE INDEX idx_referer
-                  ON known_referers(name)
-                  """
-            cursor.execute(sql)
-
-        if 'referer_logs' not in df.name.values:
-
-            sql = """
-                  CREATE TABLE referer_logs (
-                      date integer,
-                      id integer,
-                      hits integer,
-                      errors integer,
-                      nbytes integer,
-                      CONSTRAINT fk_known_referers_id
-                          FOREIGN KEY (id)
-                          REFERENCES known_referers(id)
-                          ON DELETE CASCADE
-                  )
-                  """
-            cursor.execute(sql)
-
-            # Unfortunately the index cannot be unique here.
-            sql = """
-                  CREATE UNIQUE INDEX idx_referer_logs_date
-                  ON referer_logs(date, id)
-                  """
-            cursor.execute(sql)
-
     def process_raw_records(self, df):
         """
         We have reached a limit on how many records we accumulate before
