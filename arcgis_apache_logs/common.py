@@ -64,13 +64,11 @@ class CommonProcessor(object):
             self.root.mkdir(parents=True, exist_ok=True)
 
         self.database = self.root / f'arcgis_apache_{self.project}.db'
-        self.conn = sqlite3.connect(self.database)
+        self.conn = sqlite3.connect(self.database, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
         self.cursor = self.conn.cursor()
 
         # Force foreign key support.
         self.conn.execute("PRAGMA foreign_keys = 1")
-
-        self.verify_database_setup()
 
         self.MAX_RAW_RECORDS = 100000000
 

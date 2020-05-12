@@ -66,7 +66,10 @@ class RetrieveAkamaiLogs(AkamaiBase):
         FTP to the server and retrieve any files not present locally.
         """
 
-        os.chdir(self.local_log_directory / 'incoming')
+        path = self.local_log_directory / 'incoming'
+        path.mkdir(parents=True, exist_ok=True)
+
+        os.chdir(path)
 
         ftp = FTP('104.236.112.76')
         ftp.login('akamai', 'sp4nish2ezzentials*')

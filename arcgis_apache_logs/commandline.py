@@ -72,4 +72,4 @@ def prune_arcgis_apache_database():
     args = parser.parse_args()
 
     processor = ApacheLogParser(args.project, infile=None)
-    processor.preprocess_database()
+    processor.prune_database()

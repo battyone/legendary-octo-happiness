@@ -47,6 +47,12 @@ class Initializer(CommonProcessor):
 
         self.database = self.root / f'arcgis_apache_{self.project}.db'
 
+        if self.database.exists():
+            self.logger.warning(f"Deleting {self.database}")
+            self.database.unlink()
+
+        self.conn = sqlite3.connect(self.database)
+
     def setup_logger(self):
 
         self.logger = logging.getLogger(__name__)
@@ -62,10 +68,98 @@ class Initializer(CommonProcessor):
         self.logger.addHandler(ch)
 
     def run(self):
+        self.initialize_ip_address_tables()
         self.initialize_service_tables()
         self.initialize_referer_tables()
-        self.initialize_ip_address_tables()
+        self.initialize_user_agent_tables()
         self.populate_service_lut()
+
+    def initialize_user_agent_tables(self):
+        """
+        Verify that all the database tables are setup properly for managing
+        the user_agents.
+        """
+
+        cursor = self.conn.cursor()
+
+        sql = """
+              CREATE TABLE user_agent_lut (
+                  id integer PRIMARY KEY,
+                  name text
+              )
+              """
+        cursor.execute(sql)
+        sql = """
+              CREATE UNIQUE INDEX idx_user_agent
+              ON user_agent_lut(name)
+              """
+        cursor.execute(sql)
+
+        sql = """
+              CREATE TABLE user_agent_logs (
+                  date timestamp,
+                  id integer,
+                  hits integer,
+                  errors integer,
+                  nbytes integer,
+                  CONSTRAINT fk_user_agents_id
+                      FOREIGN KEY (id)
+                      REFERENCES user_agent_lut(id)
+                      ON DELETE CASCADE
+              )
+              """
+        cursor.execute(sql)
+
+        sql = """
+              CREATE UNIQUE INDEX idx_user_agent_logs_date
+              ON user_agent_logs(date, id)
+                  """
+        cursor.execute(sql)
+
+    def initialize_ip_address_tables(self):
+        """
+        Verify that all the database tables are setup properly for managing
+        IP addresses.
+        """
+        cursor = self.conn.cursor()
+        # Create the known IP addresses table.  The IP addresses must be
+        # unique.
+        sql = """
+              CREATE TABLE ip_address_lut (
+                  id integer PRIMARY KEY,
+                  ip_address text,
+                  name text
+              )
+              """
+        cursor.execute(sql)
+        sql = """
+              CREATE UNIQUE INDEX idx_ip_address
+              ON ip_address_lut(ip_address)
+              """
+        cursor.execute(sql)
+
+        # Create the IP address logs table.
+        sql = """
+              CREATE TABLE ip_address_logs (
+                  date timestamp,
+                  id integer,
+                  hits integer,
+                  errors integer,
+                  nbytes integer,
+                  CONSTRAINT fk_known_ip_address_id
+                      FOREIGN KEY (id)
+                      REFERENCES ip_address_lut(id)
+                      ON DELETE CASCADE
+              )
+              """
+        cursor.execute(sql)
+
+        # Unfortunately the index cannot be unique here.
+        sql = """
+              CREATE INDEX idx_ip_address_logs_date
+              ON ip_address_logs(date)
+              """
+        cursor.execute(sql)
 
     def initialize_referer_tables(self):
         """
@@ -88,11 +182,9 @@ class Initializer(CommonProcessor):
               """
         cursor.execute(sql)
 
-    if 'referer_logs' not in df.name.values:
-
         sql = """
               CREATE TABLE referer_logs (
-                  date integer,
+                  date timestamp,
                   id integer,
                   hits integer,
                   errors integer,
@@ -112,7 +204,9 @@ class Initializer(CommonProcessor):
               """
         cursor.execute(sql)
 
-    def initialize_database(self):
+    def initialize_service_tables(self):
+
+        cursor = self.conn.cursor()
 
         # Create the known services and logs tables.
         sql = """
@@ -133,7 +227,7 @@ class Initializer(CommonProcessor):
 
         sql = """
               CREATE TABLE service_logs (
-                  date integer,
+                  date timestamp,
                   id integer,
                   hits integer,
                   errors integer,
@@ -158,14 +252,8 @@ class Initializer(CommonProcessor):
         """
         Populate the services database with existing services.
         """
-        if self.database.exists():
-            self.logger.warning(f"Deleting {self.database}")
-            self.database.unlink()
-
-        self.conn = sqlite3.connect(self.database)
         df = self.retrieve_services()
-
-        df.to_sql('service_lut', self.conn, index=False, if_exist='append')
+        df.to_sql('service_lut', self.conn, index=False, if_exists='append')
         self.conn.commit()
 
     def retrieve_services(self):

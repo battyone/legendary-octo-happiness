@@ -57,62 +57,6 @@ class UserAgentProcessor(CommonProcessor):
 
         self.data_retention_days = 7
 
-    def verify_database_setup(self):
-        """
-        Verify that all the database tables are setup properly for managing
-        the user_agents.
-        """
-
-        cursor = self.conn.cursor()
-
-        # Do the user_agent tables exist?
-        sql = """
-              SELECT name
-              FROM sqlite_master
-              WHERE
-                  type='table'
-                  AND name NOT LIKE 'sqlite_%'
-              """
-        df = pd.read_sql(sql, self.conn)
-
-        if 'known_user_agents' not in df.name.values:
-
-            sql = """
-                  CREATE TABLE known_user_agents (
-                      id integer PRIMARY KEY,
-                      name text
-                  )
-                  """
-            cursor.execute(sql)
-            sql = """
-                  CREATE UNIQUE INDEX idx_user_agent
-                  ON known_user_agents(name)
-                  """
-            cursor.execute(sql)
-
-        if 'user_agent_logs' not in df.name.values:
-
-            sql = """
-                  CREATE TABLE user_agent_logs (
-                      date integer,
-                      id integer,
-                      hits integer,
-                      errors integer,
-                      nbytes integer,
-                      CONSTRAINT fk_user_agents_id
-                          FOREIGN KEY (id)
-                          REFERENCES known_user_agents(id)
-                          ON DELETE CASCADE
-                  )
-                  """
-            cursor.execute(sql)
-
-            sql = """
-                  CREATE UNIQUE INDEX idx_user_agent_logs_date
-                  ON user_agent_logs(date, id)
-                  """
-            cursor.execute(sql)
-
     def process_raw_records(self, df):
         """
         We have reached a limit on how many records we accumulate before

@@ -37,65 +37,6 @@ class IPAddressProcessor(CommonProcessor):
 
         self.data_retention_days = 7
 
-    def verify_database_setup(self):
-        """
-        Verify that all the database tables are setup properly for managing
-        IP addresses.
-        """
-        sql = """
-              SELECT name
-              FROM sqlite_master
-              WHERE
-                  type='table'
-                  AND name NOT LIKE 'sqlite_%'
-                  AND name LIKE '%ip_address%'
-              """
-        df = pd.read_sql(sql, self.conn)
-        if len(df) == 2:
-            # We're good.
-            return
-
-        cursor = self.conn.cursor()
-
-        # Create the known IP addresses table.  The IP addresses must be
-        # unique.
-        sql = """
-              CREATE TABLE known_ip_addresses (
-                  id integer PRIMARY KEY,
-                  ip_address text,
-                  name text
-              )
-              """
-        cursor.execute(sql)
-        sql = """
-              CREATE UNIQUE INDEX idx_ip_address
-              ON known_ip_addresses(ip_address)
-              """
-        cursor.execute(sql)
-
-        # Create the IP address logs table.
-        sql = """
-              CREATE TABLE ip_address_logs (
-                  date integer,
-                  id integer,
-                  hits integer,
-                  errors integer,
-                  nbytes integer,
-                  CONSTRAINT fk_known_ip_address_id
-                      FOREIGN KEY (id)
-                      REFERENCES known_ip_addresses(id)
-                      ON DELETE CASCADE
-              )
-              """
-        cursor.execute(sql)
-
-        # Unfortunately the index cannot be unique here.
-        sql = """
-              CREATE INDEX idx_ip_address_logs_date
-              ON ip_address_logs(date)
-              """
-        cursor.execute(sql)
-
     def process_raw_records(self, df):
         """
         We have reached a limit on how many records we accumulate before

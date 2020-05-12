@@ -14,17 +14,17 @@ do
     #find "$root" -mtime +10080 | xargs -I fname rm fname
     
     # Get any new log files.
-    get_akamai_logs $project
+    agp-get-akamai-logs $project
     
     # Process files just recently downloaded
     files_to_process=$(find "$root" -mmin -60 -name "*.gz" | sort -t "-" -k 3,3n -k4,4 -k5,5n)
     
     for logfile in $files_to_process
     do
-    	parse-arcgis-apache-logs $project --infile $logfile
+    	agp-parse-logs $project --infile $logfile
     done
 
-    produce-arcgis-apache-graphics $project
+    agp-produce-graphics $project
 
     # Delete any files that are too old
     for datenum in $(seq 10 15)

@@ -5,11 +5,11 @@ from setuptools import setup, find_packages
 
 cmdline = 'arcgis_apache_logs.commandline'
 console_scripts = [
-    f'agp-initialize={cmdline}:init_db',
-    f'agg-parse-logs={cmdline}:parse_arcgis_apache_logs',
-    f'agp-prune-database={cmdline}:prune_arcgis_apache_database',
-    f'agp-produce-graphics={cmdline}:produce_arcgis_apache_graphics',
-    f'agp-get-akamai-logs=akamai.commandline:get_akamai_logs',
+    f'ags-initialize={cmdline}:init_db',
+    f'ags-parse-logs={cmdline}:parse_arcgis_apache_logs',
+    f'ags-prune-database={cmdline}:prune_arcgis_apache_database',
+    f'ags-produce-graphics={cmdline}:produce_arcgis_apache_graphics',
+    f'ags-get-akamai-logs=akamai.commandline:get_akamai_logs',
 ],
 
 kwargs = {

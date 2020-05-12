@@ -78,10 +78,11 @@ class ApacheLogParser(object):
 
         self.logger.addHandler(ch)
 
-    def preprocess_database(self):
+    def prune_database(self):
         """
         Do any cleaning necessary before processing any new records.
         """
+        self.logger.info("Pruning the database...")
 
         self.summarizer.preprocess_database()
         self.ip_address.preprocess_database()
