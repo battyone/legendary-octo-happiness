@@ -29,7 +29,7 @@ class IPAddressProcessor(CommonProcessor):
             SELECT a.date, SUM(a.hits) as hits, SUM(a.errors) as errors,
                    SUM(a.nbytes) as nbytes, b.ip_address
             FROM ip_address_logs a
-            INNER JOIN known_ip_addresses b
+            INNER JOIN ip_address_lut b
             ON a.id = b.id
             GROUP BY a.date, b.ip_address
             ORDER BY a.date
@@ -71,7 +71,7 @@ class IPAddressProcessor(CommonProcessor):
         """
 
         sql = """
-              SELECT id, ip_address from known_ip_addresses
+              SELECT id, ip_address from ip_address_lut
               """
         known_ips = pd.read_sql(sql, self.conn)
 
@@ -84,11 +84,11 @@ class IPAddressProcessor(CommonProcessor):
         if len(unknown_ips) > 0:
             new_ips_df = pd.Series(unknown_ips, name='ip_address').to_frame()
 
-            new_ips_df.to_sql('known_ip_addresses', self.conn,
+            new_ips_df.to_sql('ip_address_lut', self.conn,
                               if_exists='append', index=False)
 
             sql = """
-                  SELECT id, ip_address from known_ip_addresses
+                  SELECT id, ip_address from ip_address_lut
                   """
             known_ips = pd.read_sql(sql, self.conn)
 
@@ -217,42 +217,3 @@ class IPAddressProcessor(CommonProcessor):
             'h1text': f'Top IP Addresses by Hits: {yesterday}',
         }
         self.create_html_table(df, html_doc, **kwargs)
-
-    def preprocess_database(self):
-        """
-        Do any cleaning necessary before processing any new records.
-
-        If it's Monday, just drop the tables.
-        """
-        cursor = self.conn.cursor()
-
-        if dt.date.today().weekday() != 0:
-            # If it's not Monday, do nothing.
-            return
-
-        # Ok, it's Monday, drop the IP address tables, they will be recreated.
-        sql = """
-              DROP INDEX idx_ip_address_logs_date
-              """
-        self.logger.info(sql)
-        cursor.execute(sql)
-
-        sql = """
-              DROP TABLE ip_address_logs
-              """
-        self.logger.info(sql)
-        cursor.execute(sql)
-
-        sql = """
-              DROP INDEX idx_ip_address
-              """
-        self.logger.info(sql)
-        cursor.execute(sql)
-
-        sql = """
-              DROP TABLE known_ip_addresses
-              """
-        self.logger.info(sql)
-        cursor.execute(sql)
-
-        self.conn.commit()

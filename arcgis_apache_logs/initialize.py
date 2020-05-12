@@ -1,4 +1,5 @@
 # standard library imports
+import datetime as dt
 import logging
 import pathlib
 import sqlite3
@@ -47,12 +48,6 @@ class Initializer(CommonProcessor):
 
         self.database = self.root / f'arcgis_apache_{self.project}.db'
 
-        if self.database.exists():
-            self.logger.warning(f"Deleting {self.database}")
-            self.database.unlink()
-
-        self.conn = sqlite3.connect(self.database)
-
     def setup_logger(self):
 
         self.logger = logging.getLogger(__name__)
@@ -67,12 +62,125 @@ class Initializer(CommonProcessor):
 
         self.logger.addHandler(ch)
 
-    def run(self):
+    def prune_database(self):
+
+        if dt.date.today().weekday() != 0:
+            # If it's not Monday, do nothing.
+            return
+
+        self.drop_tables()
+
         self.initialize_ip_address_tables()
-        self.initialize_service_tables()
         self.initialize_referer_tables()
         self.initialize_user_agent_tables()
+
+    def drop_tables():
+
+        self.drop_ip_address_tables()
+        self.drop_referer_tables()
+        self.drop_user_agent_tables()
+
+    def drop_referer_tables(self):
+
+        cursor = self.conn.cursor()
+
+        sql = """
+              DROP INDEX idx_referer_logs_date
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        sql = """
+              DROP TABLE referer_logs
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        sql = """
+              DROP INDEX idx_referer
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        sql = """
+              DROP TABLE referer_lut
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+        self.conn.commit()
+
+    def drop_user_agent_tables(self):
+
+        cursor = self.conn.cursor()
+
+        sql = """
+              DROP INDEX idx_user_agent_logs_date
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        sql = """
+              DROP TABLE user_agent_logs
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        sql = """
+              DROP INDEX idx_user_agent
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        sql = """
+              DROP TABLE known_user_agents
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        self.conn.commit()
+
+    def drop_ip_address_tables(self):
+
+        sql = """
+              DROP INDEX idx_ip_address_logs_date
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        sql = """
+              DROP TABLE ip_address_logs
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        sql = """
+              DROP INDEX idx_ip_address
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        sql = """
+              DROP TABLE ip_address_lut
+              """
+        self.logger.info(sql)
+        cursor.execute(sql)
+
+        self.conn.commit()
+
+    def initialize(self):
+
+        if self.database.exists():
+            self.logger.warning(f"Deleting {self.database}")
+            self.database.unlink()
+
+        self.conn = sqlite3.connect(self.database)
+
+        self.initialize_service_tables()
         self.populate_service_lut()
+
+        self.initialize_ip_address_tables()
+        self.initialize_referer_tables()
+        self.initialize_user_agent_tables()
 
     def initialize_user_agent_tables(self):
         """

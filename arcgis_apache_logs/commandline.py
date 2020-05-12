@@ -58,7 +58,7 @@ def init_db():
     args = parser.parse_args()
 
     with Initializer(args.project, document_root=args.document_root) as p:
-        p.run()
+        p.initialize()
 
 
 def prune_arcgis_apache_database():
@@ -71,5 +71,5 @@ def prune_arcgis_apache_database():
     parser.add_argument('project', choices=['idpgis', 'nowcoast'])
     args = parser.parse_args()
 
-    processor = ApacheLogParser(args.project, infile=None)
-    processor.prune_database()
+    with Initializer(args.project) as p:
+        p.prune_database()

@@ -134,44 +134,6 @@ class RefererProcessor(CommonProcessor):
 
         return df
 
-    def preprocess_database(self):
-        """
-        Do any cleaning necessary before processing any new records.
-
-        Delete anything older than 7 days.
-        """
-        if dt.date.today().weekday() != 0:
-            # If it's not Monday, do nothing.
-            return
-
-        # Ok, it's Monday, drop the IP address tables, they will be recreated.
-        cursor = self.conn.cursor()
-
-        sql = """
-              DROP INDEX idx_referer_logs_date
-              """
-        self.logger.info(sql)
-        cursor.execute(sql)
-
-        sql = """
-              DROP TABLE referer_logs
-              """
-        self.logger.info(sql)
-        cursor.execute(sql)
-
-        sql = """
-              DROP INDEX idx_referer
-              """
-        self.logger.info(sql)
-        cursor.execute(sql)
-
-        sql = """
-              DROP TABLE known_referers
-              """
-        self.logger.info(sql)
-        cursor.execute(sql)
-        self.conn.commit()
-
     def process_graphics(self, html_doc):
         """Create the HTML and graphs for the referers.
 

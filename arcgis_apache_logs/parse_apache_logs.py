@@ -78,18 +78,6 @@ class ApacheLogParser(object):
 
         self.logger.addHandler(ch)
 
-    def prune_database(self):
-        """
-        Do any cleaning necessary before processing any new records.
-        """
-        self.logger.info("Pruning the database...")
-
-        self.summarizer.preprocess_database()
-        self.ip_address.preprocess_database()
-        self.referer.preprocess_database()
-        self.services.preprocess_database()
-        self.user_agent.preprocess_database()
-
     def parse_input(self):
         """
         Process the entire log file.
