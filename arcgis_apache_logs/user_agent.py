@@ -49,7 +49,7 @@ class UserAgentProcessor(CommonProcessor):
             SELECT a.date, SUM(a.hits) as hits, SUM(a.errors) as errors,
                    SUM(a.nbytes) as nbytes, b.name as user_agent
             FROM user_agent_logs a
-            INNER JOIN known_user_agents b
+            INNER JOIN user_agent_lut b
             ON a.id = b.id
             GROUP BY a.date, user_agent
             ORDER BY a.date
@@ -70,9 +70,6 @@ class UserAgentProcessor(CommonProcessor):
         groupers = [pd.Grouper(freq=self.frequency), 'user_agent']
         df = df.set_index('date').groupby(groupers).sum().reset_index()
 
-        # Remake the date into a single column, a timestamp
-        df['date'] = df['date'].astype(np.int64) // 1e9
-
         # Have to have the same column names as the database.
         df = self.replace_user_agents_with_ids(df)
 
@@ -92,7 +89,7 @@ class UserAgentProcessor(CommonProcessor):
         """
 
         sql = """
-              SELECT * from known_user_agents
+              SELECT * from user_agent_lut
               """
         known_user_agents = pd.read_sql(sql, self.conn)
 
@@ -106,11 +103,11 @@ class UserAgentProcessor(CommonProcessor):
         if len(unknown_user_agents) > 0:
             new_df = pd.Series(unknown_user_agents, name='name').to_frame()
 
-            new_df.to_sql('known_user_agents', self.conn,
+            new_df.to_sql('user_agent_lut', self.conn,
                           if_exists='append', index=False)
 
             sql = """
-                  SELECT * from known_user_agents
+                  SELECT * from user_agent_lut
                   """
             known_user_agents = pd.read_sql(sql, self.conn)
             df = pd.merge(df_orig, known_user_agents,

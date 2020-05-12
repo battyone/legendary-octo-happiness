@@ -64,6 +64,11 @@ class Initializer(CommonProcessor):
 
     def prune_database(self):
 
+        self.conn = sqlite3.connect(self.database)
+
+        # Do this at least daily, it's not too expensive.
+        self.conn.execute('VACUUM')
+
         if dt.date.today().weekday() != 0:
             # If it's not Monday, do nothing.
             return
@@ -132,7 +137,7 @@ class Initializer(CommonProcessor):
         cursor.execute(sql)
 
         sql = """
-              DROP TABLE known_user_agents
+              DROP TABLE user_agent_lut
               """
         self.logger.info(sql)
         cursor.execute(sql)
@@ -182,6 +187,59 @@ class Initializer(CommonProcessor):
         self.initialize_referer_tables()
         self.initialize_user_agent_tables()
 
+        self.initialize_summary_table()
+
+    def initialize_summary_table(self):
+
+        cursor = self.conn.cursor()
+
+        # Do the summary tables exist?
+        sql = """
+              SELECT name
+              FROM sqlite_master
+              WHERE
+                  type='table'
+                  AND name NOT LIKE 'sqlite_%'
+              """
+        df = pd.read_sql(sql, self.conn)
+
+        if 'summary' not in df.name.values:
+
+            sql = """
+                  CREATE TABLE summary (
+                      date timestamp,
+                      hits integer,
+                      mapdraws integer,
+                      errors integer,
+                      nbytes integer
+                  )
+                  """
+            cursor.execute(sql)
+
+            # sql = """
+            #       CREATE UNIQUE INDEX idx_summary_date
+            #       ON summary(date)
+            #       """
+            # cursor.execute(sql)
+
+        if "burst_staging" not in df.name.values:
+
+            sql = """
+                  CREATE TABLE burst_staging (
+                      date timestamp,
+                      hits integer,
+                      errors integer,
+                      nbytes integer
+                  )
+                  """
+            cursor.execute(sql)
+
+            # sql = """
+            #       CREATE INDEX idx_burst_staging_date
+            #       ON summary(date)
+            #       """
+            # cursor.execute(sql)
+
     def initialize_user_agent_tables(self):
         """
         Verify that all the database tables are setup properly for managing
@@ -218,11 +276,12 @@ class Initializer(CommonProcessor):
               """
         cursor.execute(sql)
 
-        sql = """
-              CREATE UNIQUE INDEX idx_user_agent_logs_date
-              ON user_agent_logs(date, id)
-                  """
-        cursor.execute(sql)
+        # This cannot be unique.  Log fragments are messy.
+        # sql = """
+        #       CREATE UNIQUE INDEX idx_user_agent_logs_date
+        #       ON user_agent_logs(date, id)
+        #           """
+        # cursor.execute(sql)
 
     def initialize_ip_address_tables(self):
         """
@@ -263,11 +322,11 @@ class Initializer(CommonProcessor):
         cursor.execute(sql)
 
         # Unfortunately the index cannot be unique here.
-        sql = """
-              CREATE INDEX idx_ip_address_logs_date
-              ON ip_address_logs(date)
-              """
-        cursor.execute(sql)
+        # sql = """
+        #       CREATE INDEX idx_ip_address_logs_date
+        #       ON ip_address_logs(date)
+        #       """
+        # cursor.execute(sql)
 
     def initialize_referer_tables(self):
         """
@@ -306,11 +365,11 @@ class Initializer(CommonProcessor):
         cursor.execute(sql)
 
         # Unfortunately the index cannot be unique here.
-        sql = """
-              CREATE UNIQUE INDEX idx_referer_logs_date
-              ON referer_logs(date, id)
-              """
-        cursor.execute(sql)
+        # sql = """
+        #       CREATE UNIQUE INDEX idx_referer_logs_date
+        #       ON referer_logs(date, id)
+        #       """
+        # cursor.execute(sql)
 
     def initialize_service_tables(self):
 
@@ -350,11 +409,12 @@ class Initializer(CommonProcessor):
               """
         cursor.execute(sql)
 
-        sql = """
-              CREATE UNIQUE INDEX idx_services_logs_date
-              ON service_logs(date, id)
-              """
-        cursor.execute(sql)
+        # This cannot be unique
+        # sql = """
+        #       CREATE UNIQUE INDEX idx_services_logs_date
+        #       ON service_logs(date, id)
+        #       """
+        # cursor.execute(sql)
 
     def populate_service_lut(self):
         """

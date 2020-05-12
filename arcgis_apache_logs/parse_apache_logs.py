@@ -125,6 +125,8 @@ class ApacheLogParser(object):
 
         records = []
 
+        self.logger.info(f"Parsing {self.infile}...")
+
         for line in gzip.open(self.infile, mode='rt', errors='replace'):
             m = regex.match(line)
             if m is None:
@@ -160,6 +162,8 @@ class ApacheLogParser(object):
         df['errors'] = df.eval(
             'status_code < 200 or status_code >= 400'
         ).astype(int)
+
+        self.logger.info(f"Parsed {len(df)} log records...")
 
         self.ip_address.process_raw_records(df)
         self.referer.process_raw_records(df)

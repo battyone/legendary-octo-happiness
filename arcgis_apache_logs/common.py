@@ -137,10 +137,6 @@ class CommonProcessor(object):
 
         df = pd.read_sql(self.time_series_sql, self.conn)
 
-        # Right now the 'date' column is in timestamp form.  We need that
-        # in native datetime.
-        df['date'] = pd.to_datetime(df['date'], unit='s')
-
         self.df = df
         self.df_today = self.df[self.df.date.dt.day == self.df.date.max().day]
 
@@ -242,7 +238,7 @@ class CommonProcessor(object):
         The current set of records may overlap with existing records in the
         database, so we must merge them.
         """
-        start = df_current.iloc[0].date
+        start = df_current.iloc[0].date.isoformat()
 
         # Get everything from the database after this time.
         sql = f"""

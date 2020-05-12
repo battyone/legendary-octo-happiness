@@ -46,99 +46,6 @@ class SummaryProcessor(CommonProcessor):
             ORDER BY date
             """
 
-    def verify_database_setup(self):
-        """
-        Verify that all the database tables are setup properly for managing
-        the summary.
-        """
-
-        cursor = self.conn.cursor()
-
-        # Do the summary tables exist?
-        sql = """
-              SELECT name
-              FROM sqlite_master
-              WHERE
-                  type='table'
-                  AND name NOT LIKE 'sqlite_%'
-              """
-        df = pd.read_sql(sql, self.conn)
-
-        if 'summary' not in df.name.values:
-
-            sql = """
-                  CREATE TABLE summary (
-                      date integer,
-                      hits integer,
-                      mapdraws integer,
-                      errors integer,
-                      nbytes integer
-                  )
-                  """
-            cursor.execute(sql)
-
-            sql = """
-                  CREATE UNIQUE INDEX idx_summary_date
-                  ON summary(date)
-                  """
-            cursor.execute(sql)
-
-        if "burst_summary" not in df.name.values:
-
-            sql = """
-                  CREATE TABLE burst_summary (
-                      date integer,
-                      hits integer,
-                      errors integer,
-                      nbytes integer
-                  )
-                  """
-            cursor.execute(sql)
-
-            sql = """
-                  CREATE UNIQUE INDEX idx_burst_summary_date
-                  ON summary(date)
-                  """
-            cursor.execute(sql)
-
-        if "burst_staging" not in df.name.values:
-
-            sql = """
-                  CREATE TABLE burst_staging (
-                      date integer,
-                      hits integer,
-                      errors integer,
-                      nbytes integer
-                  )
-                  """
-            cursor.execute(sql)
-
-            sql = """
-                  CREATE INDEX idx_burst_staging_date
-                  ON summary(date)
-                  """
-            cursor.execute(sql)
-
-    def preprocess_database(self):
-        """
-        Do any cleaning necessary before processing any new records.
-        """
-        # Do a daily rebuild of the database, just to try to keep things in
-        # order.  It's not too expensive.
-        self.conn.execute('VACUUM')
-        return
-
-        # Drop any records from the burst staging table that are older than
-        # 7 days.
-        sql = """
-              DELETE FROM burst_staging
-              WHERE date < ?
-              """
-        datenum = (dt.datetime.now() - dt.timedelta(days=7)).timestamp()
-        self.cursor.execute(sql, (datenum,))
-
-        self.conn.commit()
-
     def post_process_burst(self):
         fig, ax = plt.subplots()
 
@@ -198,7 +105,6 @@ class SummaryProcessor(CommonProcessor):
                 .resample('T')
                 .sum()
                 .reset_index())
-        df['date'] = df['date'].astype(np.int64) // 1e9
         df.to_sql('burst_staging', self.conn, if_exists='append', index=False)
 
         # Do the hourly summary
@@ -210,13 +116,10 @@ class SummaryProcessor(CommonProcessor):
                 .sum()
                 .reset_index())
 
-        # Remake the date into a single column, a timestamp
-        df['date'] = df['date'].astype(np.int64) // 1e9
-
         df = self.merge_with_database(df, 'summary')
 
         # Now merge with the map draw information from the services table.
-        starting_date = df.loc[0]['date']
+        starting_date = df.loc[0]['date'].isoformat()
         sql = """
               SELECT date,
                      SUM(export_mapdraws) as export_mapdraws,
@@ -355,7 +258,7 @@ class SummaryProcessor(CommonProcessor):
         sql = """
               SELECT a.date, SUM(a.hits) as hits
               FROM user_agent_logs a
-              INNER JOIN known_user_agents b
+              INNER JOIN user_agent_lut b
               ON a.id = b.id
               WHERE b.name LIKE 'GeoEvent%'
               GROUP BY a.date

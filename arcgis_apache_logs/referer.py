@@ -52,7 +52,7 @@ class RefererProcessor(CommonProcessor):
             SELECT a.date, SUM(a.hits) as hits, SUM(a.errors) as errors,
                    SUM(a.nbytes) as nbytes, b.name as referer
             FROM referer_logs a
-            INNER JOIN known_referers b
+            INNER JOIN referer_lut b
             ON a.id = b.id
             GROUP BY a.date, referer
             ORDER BY a.date
@@ -85,9 +85,6 @@ class RefererProcessor(CommonProcessor):
         groupers = [pd.Grouper(freq=self.frequency), 'referer']
         df_ref = df.set_index('date').groupby(groupers).sum().reset_index()
 
-        # Remake the date into a single column, a timestamp
-        df_ref['date'] = df_ref['date'].astype(np.int64) // 1e9
-
         # Have to have the same column names as the database.
         df_ref = self.replace_referers_with_ids(df_ref)
 
@@ -106,7 +103,7 @@ class RefererProcessor(CommonProcessor):
         """
 
         sql = """
-              SELECT * from known_referers
+              SELECT * from referer_lut
               """
         known_referers = pd.read_sql(sql, self.conn)
 
@@ -120,11 +117,11 @@ class RefererProcessor(CommonProcessor):
         if len(unknown_referers) > 0:
             new_df = pd.Series(unknown_referers, name='name').to_frame()
 
-            new_df.to_sql('known_referers', self.conn,
+            new_df.to_sql('referer_lut', self.conn,
                           if_exists='append', index=False)
 
             sql = """
-                  SELECT * from known_referers
+                  SELECT * from referer_lut
                   """
             known_referers = pd.read_sql(sql, self.conn)
             df = pd.merge(df_orig, known_referers,

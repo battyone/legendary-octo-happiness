@@ -50,9 +50,6 @@ class IPAddressProcessor(CommonProcessor):
         groupers = [pd.Grouper(freq=self.frequency), 'ip_address']
         df = df.set_index('date').groupby(groupers).sum().reset_index()
 
-        # Remake the date into a single column, a timestamp
-        df['date'] = df['date'].astype(np.int64) // 1e9
-
         df = self.replace_ip_addresses_with_ids(df)
 
         df = self.merge_with_database(df, 'ip_address_logs')
