@@ -133,7 +133,7 @@ class ServicesProcessor(CommonProcessor):
         # How many services have NaN for IDs?  This must be dropped.
         dfnull = df[df.id.isnull()]
         n = len(dfnull)
-        msg = f"Dropping {n} unmatched IDs"
+        msg = f"Dropping {n} unmatched service IDs (these are errors)"
         self.logger.info(msg)
         df = df.dropna(subset=['id'])
 
