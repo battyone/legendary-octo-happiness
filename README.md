@@ -25,8 +25,5 @@ ags-initialize idpgis
 # Let 'er rip!
 
 ```
-./process_daily_logs.sh idpgis
+ags-parse-logs --help
 ```
-
-This first time, it will take a while for this to run, as it has to get thru
-several days of logs.  Subsequent runs over the next few days will be quicker.
