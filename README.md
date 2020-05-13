@@ -16,17 +16,16 @@ conda env create -f environment.yml
 
 ## Initialize the SQLITE database
 
-So, for example, to setup for nowcoast and idpgis, use
+So, for example, to setup for idpgis, use
 
 ```
-agp-initialize nowcoast
-agp-initialize idpgis
+ags-initialize idpgis
 ```
 
 # Let 'er rip!
 
 ```
-./run process_daily_logs.sh
+./process_daily_logs.sh idpgis
 ```
 
 This first time, it will take a while for this to run, as it has to get thru
