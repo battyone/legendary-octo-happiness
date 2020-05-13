@@ -29,15 +29,21 @@ class ApacheLogParser(object):
     project : str
         Either nowcoast or idpgis
     """
-    def __init__(self, project, infile=None, document_root=None):
+    def __init__(self, project, infile=None, document_root=None,
+                 services_only=False):
         """
         Parameters
         ----------
-        graphics : bool
-            Whether or not to produce any plots or HTML output.
+        infile : str
+            Path to gzipped log file
+        document_root : str
+            Where the database and graphical output is written
+        services_only : bool
+            If true, do not track referers, ip addresses, or user agents.
         """
         self.project = project
         self.infile = infile
+        self.services_only = services_only
 
         if document_root is None:
             self.root = pathlib.Path.home() \
@@ -150,6 +156,16 @@ class ApacheLogParser(object):
                 m.group('user_agent')
             ))
 
+            if len(records) % 1000000 == 0:
+                self.process_records(records)
+
+                # reset for the next batch
+                records = []
+
+        self.process_records(records)
+
+    def process_records(self, records):
+
         columns = [
             'date', 'ip_address', 'path', 'hits', 'status_code', 'nbytes',
             'referer', 'user_agent'
@@ -165,10 +181,12 @@ class ApacheLogParser(object):
 
         self.logger.info(f"Parsed {len(df)} log records...")
 
-        self.ip_address.process_raw_records(df)
-        self.referer.process_raw_records(df)
+        if not self.services_only:
+            self.ip_address.process_raw_records(df)
+            self.referer.process_raw_records(df)
+            self.user_agent.process_raw_records(df)
+
         self.services.process_raw_records(df)
-        self.user_agent.process_raw_records(df)
         self.summarizer.process_raw_records(df)
 
     def process_graphics(self):
@@ -177,11 +195,15 @@ class ApacheLogParser(object):
             # Do not produce graphics when parsing.
             return
 
-        self.summarizer.process_graphics(self.doc)
-        self.referer.process_graphics(self.doc)
+        if not self.services_only:
+            self.summarizer.process_graphics(self.doc)
+            self.referer.process_graphics(self.doc)
+
         self.services.process_graphics(self.doc)
-        self.ip_address.process_graphics(self.doc)
-        self.user_agent.process_graphics(self.doc)
+
+        if not self.services_only:
+            self.ip_address.process_graphics(self.doc)
+            self.user_agent.process_graphics(self.doc)
 
         # Write the HTML document.
         path = self.root / f'{self.project}.html'

@@ -16,6 +16,9 @@ def parse_arcgis_apache_logs():
     parser.add_argument('project', choices=['idpgis', 'nowcoast'])
     parser.add_argument('--infile')
 
+    help = 'If specified, ignore the user agent, referer, and IP address'
+    parser.add_argument('--services-only', action='store_true', help=help)
+
     help = (
         "Write the documents in this directory.  Default is "
         "$HOME/Documents/arcgis_apache_logs"
@@ -25,7 +28,8 @@ def parse_arcgis_apache_logs():
     args = parser.parse_args()
 
     log_processor = ApacheLogParser(args.project, infile=args.infile,
-                                    document_root=args.document_root)
+                                    document_root=args.document_root,
+                                    services_only=args.services_only)
     log_processor.parse_input()
 
 
@@ -37,9 +41,14 @@ def produce_arcgis_apache_graphics():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('project', choices=['idpgis', 'nowcoast'])
+
+    help = 'If specified, ignore the user agent, referer, and IP address'
+    parser.add_argument('--services-only', action='store_true', help=help)
+
     args = parser.parse_args()
 
-    p = ApacheLogParser(args.project, infile=None)
+    p = ApacheLogParser(args.project, infile=None,
+                        services_only=args.services_only)
     p.process_graphics()
 
 
